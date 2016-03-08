@@ -1,0 +1,257 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+@*@section featured {
+    <section class="featured">
+        <div class="content-wrapper">
+            <hgroup class="title">
+                <h1>@ViewBag.Title.</h1>
+                <h2>@ViewBag.Message</h2>
+            </hgroup>
+            <p>
+                To learn more about ASP.NET MVC visit
+                <a href="http://asp.net/mvc" title="ASP.NET MVC Website">http://asp.net/mvc</a>.
+                The page features <mark>videos, tutorials, and samples</mark> to help you get the most from ASP.NET MVC.
+                If you have any questions about ASP.NET MVC visit
+                <a href="http://forums.asp.net/1146.aspx/1?MVC" title="ASP.NET MVC Forum">our forums</a>.
+            </p>
+        </div>
+    </section>
+}
+<h3>We suggest the following:</h3>
+<ol class="round">
+    <li class="one">
+        <h5>Getting Started</h5>
+        ASP.NET MVC gives you a powerful, patterns-based way to build dynamic websites that
+        enables a clean separation of concerns and that gives you full control over markup
+        for enjoyable, agile development. ASP.NET MVC includes many features that enable
+        fast, TDD-friendly development for creating sophisticated applications that use
+        the latest web standards.
+        <a href="http://go.microsoft.com/fwlink/?LinkId=245151">Learn more…</a>
+    </li>
+
+    <li class="two">
+        <h5>Add NuGet packages and jump-start your coding</h5>
+        NuGet makes it easy to install and update free libraries and tools.
+        <a href="http://go.microsoft.com/fwlink/?LinkId=245153">Learn more…</a>
+    </li>
+
+    <li class="three">
+        <h5>Find Web Hosting</h5>
+        You can easily find a web hosting company that offers the right mix of features
+        and price for your applications.
+        <a href="http://go.microsoft.com/fwlink/?LinkId=245157">Learn more…</a>
+    </li>
+</ol>*@
+
+<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" />
+
+<div id="videoTableOutput">
+
+
+</div>
+
+<button id="createVideo">Create Video</button>
+
+<div id="videoEditOutput">
+
+
+</div>
+
+
+
+
+
+
+
+
+
+@section scripts {
+    
+
+<script id="videoTable" type="text/html">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Length</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each video}}
+            <tr data-id="{{Id}}">
+                <td>{{Title}}</td>
+                <td>{{Length}}</td>
+                <td>
+                    <button class="editVideo">Edit</button>
+                    <button class="deleteVideo">Delete</button>
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+
+    </table>
+
+</script>
+
+<script id="videoEdit" type="text/html">
+    <hr />
+    <form>
+        <input type="hidden" name="id" id="id" value="{{Id}}" />
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" name="Title" id="title" value="{{Title}}" required class="form-control" />
+        </div>
+        <div class="form-group">
+            <label for="length">Title</label>
+            <input type="number" name="Length" id="length" value="{{Length}}" class="form-control" min="0" max="300" />
+        </div>
+        <input type="submit" id="saveVideo" class="btn btn-default" />
+
+    </form>
+
+</script>
+
+        <script src="~/Scripts/jquery-2.2.0.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+
+        <script src="~/Scripts/handlebars.js"></script>
+
+        <script>
+
+           
+            
+
+            var videoServer = (function () {
+                var videoApiUrl = '@Url.RouteUrl("DefaultApi", new { httproute = "", controller = "videos" })';
+
+                $(document).ajaxError(function (e, xhr) {
+                    alert(xhr.status + ':' + xhr.statusText);
+                });
+
+                var getVideos = function () {
+                    return $.ajax(videoApiUrl);
+                };
+
+                var getVideo = function (id) {
+                    return $.ajax(videoApiUrl + "/" + id);
+                };
+
+                var updateVideo = function (video) {
+                    //alert(video.Id);
+                    return $.ajax(videoApiUrl + "/" + video.Id, {
+                        type: "PUT",
+                        data: video
+                    });
+                };
+
+                var addVideo = function (video) {
+                    return $.ajax(videoApiUrl, {
+                        type: "Post",
+                        data: video
+                    });
+                };
+
+                var deleteVideo = function (id) {
+                    return $.ajax(videoApiUrl + "/" + id, {
+                        type: "Delete"
+                    });
+                };
+
+
+                return {
+                    deleteVideo: deleteVideo,
+                    addVideo: addVideo,
+                    getVideos: getVideos,
+                    getVideo: getVideo,
+                    updateVideo: updateVideo
+                };
+            }());
+
+            (function () {
+
+                var templates = {};
+
+
+                var compileTemplates = function () {
+                    templates.videoTable = Handlebars.compile($('#videoTable').html());
+                    templates.videoEdit = Handlebars.compile($('#videoEdit').html());
+                };
+
+                var showAllVideos = function (data) {
+                    var output = templates.videoTable({ video: data });
+                    $('#videoTableOutput').html(output);
+                };
+
+                var showVideoForEdit = function (video) {
+                    var output = templates.videoEdit(video);
+                    $('#videoEditOutput').html(output);
+                };
+
+                var refreshVideos = function () {
+                    videoServer.getVideos().done(showAllVideos);
+                };
+
+                var editVideo = function () {
+                        var id = getId(this);
+                        videoServer.getVideo(id).done(showVideoForEdit);
+                };
+
+                var createVideo = function () {
+                    var video = { Id: 0, Title: "", Length: 0 };
+                    showVideoForEdit(video);
+                };
+
+                var deleteVideo = function () {
+                    var id = getId(this);
+                    videoServer.deleteVideo(id).done(refreshVideos);
+                }
+
+                var clearEdit = function () {
+                    $("#videoEditOutput").empty();
+                }
+
+                var saveVideo = function (e) {
+                    e.preventDefault();
+                    var video = {
+                        "Id": $("#id").val(),
+                        "Title": $("#title").val(),
+                        "Length": $("#length").val()
+                    };
+
+                    //videoServer.updateVideo(video).done(refreshVideos, clearEdit);
+                    var operation;
+                    if (video.Id != 0) {
+                        operation = videoServer.updateVideo(video)
+                    }
+                    else {
+                        operation = videoServer.addVideo(video);
+                    }
+                    operation.done(refreshVideos, clearEdit);
+                    return false;
+                };
+               
+                $(document).on("click", ".editVideo", editVideo);
+
+                $(document).on("click", "#saveVideo", saveVideo);
+
+                $(document).on("click", "#createVideo", createVideo);
+                $(document).on("click", ".deleteVideo", deleteVideo);
+               
+
+                var getId = function (element) {
+                    return $(element).parents("tr").attr("data-id");
+                };
+
+                $(function () {
+                    compileTemplates();
+                    refreshVideos();
+                });
+            }());
+
+
+
+        </script>
+    
+    }
